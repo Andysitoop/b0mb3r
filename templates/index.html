@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport">
@@ -10,65 +10,43 @@
     <title>b0mb3r 💣</title>
 </head>
 <body>
-<div id="block-ui" style="display:none">
+<div id="block-ui">
     <div id="loader"></div>
 </div>
 
 <div id="main">
     <h1 class="no-select">b0mb3r 💣</h1>
-    <p class="lead" id="sms">Available SMS services: <span
+    <p class="lead" id="sms">Доступно SMS-сервисов: <span
             class="badge badge-pill badge-primary no-select">{{sms}}</span></p>
     <form action="/sms" id="phone-form" method="post">
         <div class="form-row">
             <div class="col">
                 <label for="phone"></label>
-                <!-- changed to type="tel" for better phone behaviour -->
                 <input aria-describedby="phonesHelp" class="form-control" id="phone" name="phone"
-                       placeholder="Phone number" required type="tel">
+                       pattern="\d*" placeholder="Номер" required type="number">
             </div>
 
             <div class="col">
                 <label for="count"></label>
-                <input class="form-control" id="count" max="1000" min="1" name="count" placeholder="Repeats"
+                <input class="form-control" id="count" max="1000" min="1" name="count" placeholder="Повторы"
                        required type="number" value="1">
             </div>
 
             <div class="col">
                 <label for="smsText"></label>
-                <input class="form-control" id="smsText" maxlength="1000" name="smsText" placeholder="SMS text"
+                <input class="form-control" id="smsText" max="1000" min="1" name="smsText" placeholder="Текст SMS"
                         type="text">
-            </div>
-        </div>
-
-        <!-- Manual country code switch -->
-        <div class="form-group mt-3">
-            <div class="custom-control custom-switch">
-                <input type="checkbox" class="custom-control-input" id="useManualCode">
-                <label class="custom-control-label" for="useManualCode">Use manual country code</label>
-            </div>
-        </div>
-
-        <!-- Manual code input (hidden by default) -->
-        <div class="form-row" id="manualCodeRow" style="display:none; margin-bottom: 1rem;">
-            <div class="col-md-4">
-                <label for="manualDial"></label>
-                <input id="manualDial" class="form-control" type="text" pattern="^\+\d{1,4}$" placeholder="+XX">
-                <small class="form-text text-muted">Include + and country code, e.g. +1, +44, +34.</small>
             </div>
         </div>
 
         <div class="form-group form-check">
             <input class="form-check-input" id="call" name="call" type="checkbox" value="true">
             <input name="call" type="hidden" value="false"/>
-            <label class="form-check-label" for="call">Calls (beta)</label>
+            <label class="form-check-label" for="call">Звонки (beta)</label>
         </div>
 
         <small class="form-text text-muted" id="phonesHelp"></small>
-        <button class="btn btn-primary btn-lg" type="submit">Start</button>
-
-        <!-- hidden fields to send country/dialCode -->
-        <input type="hidden" name="country" id="country">
-        <input type="hidden" name="dialCode" id="dialCode">
+        <button class="btn btn-primary btn-lg" type="submit">Начать атаку</button>
     </form>
 </div>
 
@@ -80,33 +58,16 @@
 <script src="/static/intlTelInput.min.js"></script>
 
 <script type="text/javascript">
-    let tips = [
-        'b0mb3r works best with Russian numbers',
-        'you can suggest a new SMS service <a href="https://github.com/crinny/b0mb3r/issues/new?labels=enhancement&title=%D0%94%D0%BE%D0%B1%D0%B0%D0%B2%D0%BB%D0%B5%D0%BD%D0%B8%D0%B5%20SMS-%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81%D0%B0">here</a>'
-    ];
+    let tips = ['b0mb3r работает с российскими номерами лучше всего', 'вы можете предложить новый SMS-сервис <a href="https://github.com/Andysitoop">здесь</a>'];
     let input = document.querySelector('#phone');
     let tip = document.querySelector('#phonesHelp');
     let intltelinput = undefined;
 
     $(document).ready(function () {
-        tip.innerHTML = 'Tip: ' + tips[Math.random() * tips.length >> 0];
-
-        // Initialize with all countries allowed and separate dial code for clarity
+        tip.innerHTML = 'Совет: ' + tips[Math.random() * tips.length >> 0];
         intltelinput = intlTelInput(input, {
-            separateDialCode: true,
-            initialCountry: "ru", // keep initial as ru like original
-            // remove onlyCountries to allow selection of any country
-            // utilsScript can be added if you have /static/utils.js for validation/formatting
-            utilsScript: "/static/utils.js"
-        });
-
-        // toggle manual code input
-        $('#useManualCode').change(function () {
-            if (this.checked) {
-                $('#manualCodeRow').show();
-            } else {
-                $('#manualCodeRow').hide();
-            }
+            onlyCountries: ['ru', 'ua', 'kz', 'by', 'gt'],
+            initialCountry: 'gt',
         });
     });
 
@@ -118,45 +79,8 @@
             $('#block-ui').css('display', 'block');
         }, 600);
 
-        // serialize existing form data
         let data = $('#phone-form').serializeArray();
-
-        // If manual code is used, validate and push manual dial code
-        if ($('#useManualCode').is(':checked')) {
-            let manual = $('#manualDial').val().trim();
-            const re = /^\+\d{1,4}$/;
-            if (!re.test(manual)) {
-                alert('Please enter a valid manual dial code (e.g. +1, +44).');
-                $('#block-ui').css('display', 'none');
-                // reverse animations quickly
-                $('#main').css({'animation-direction': 'reverse'});
-                $('#footer').css({'animation-direction': 'reverse'});
-                return;
-            }
-            // add country empty and dialCode manual
-            data.push({name: "country", value: ""});
-            data.push({name: "dialCode", value: manual});
-        } else {
-            // Use data from intl-tel-input
-            const countryData = intltelinput.getSelectedCountryData() || {};
-            const iso2 = countryData.iso2 || '';
-            const dial = countryData.dialCode ? ('+' + countryData.dialCode) : '';
-
-            data.push({name: "country", value: iso2});
-            data.push({name: "dialCode", value: dial});
-
-            // optional: if utilsScript is loaded, validate number
-            if (typeof intltelinput.isValidNumber === 'function') {
-                if (!intltelinput.isValidNumber()) {
-                    alert('Please enter a valid phone number for the selected country.');
-                    $('#block-ui').css('display', 'none');
-                    $('#main').css({'animation-direction': 'reverse'});
-                    $('#footer').css({'animation-direction': 'reverse'});
-                    return;
-                }
-            }
-        }
-
+        data.push({name: "country", value: intltelinput.getSelectedCountryData().iso2});
         $.ajax({
             url: '/sms',
             type: 'post',
@@ -178,13 +102,6 @@
                     'animation-fill-mode': 'both',
                     'animation-direction': 'reverse'
                 });
-            },
-            error: function () {
-                // hide loader on error and reverse animation
-                $('#block-ui').css('display', 'none');
-                $('#main').css({'animation-direction': 'reverse'});
-                $('#footer').css({'animation-direction': 'reverse'});
-                alert('Request failed. Please try again.');
             }
         });
     });
